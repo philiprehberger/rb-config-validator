@@ -3,6 +3,7 @@
 [![Tests](https://github.com/philiprehberger/rb-config-validator/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/rb-config-validator/actions/workflows/ci.yml)
 [![Gem Version](https://badge.fury.io/rb/philiprehberger-config_validator.svg)](https://rubygems.org/gems/philiprehberger-config_validator)
 [![License](https://img.shields.io/github/license/philiprehberger/rb-config-validator)](LICENSE)
+[![Sponsor](https://img.shields.io/badge/sponsor-GitHub%20Sponsors-ec6cb9)](https://github.com/sponsors/philiprehberger)
 
 Configuration schema validator with type checking and helpful error messages
 
