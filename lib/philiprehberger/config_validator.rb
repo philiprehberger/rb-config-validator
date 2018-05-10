@@ -29,8 +29,8 @@ module Philiprehberger
     # @param config [Hash] the configuration to validate
     # @yield [Schema] the schema definition block
     # @return [Array<String>] validation error messages
-    def self.validate(config, &block)
-      schema = define(&block)
+    def self.validate(config, &)
+      schema = define(&)
       schema.validate(config)
     end
 
@@ -40,8 +40,8 @@ module Philiprehberger
     # @yield [Schema] the schema definition block
     # @return [Hash] the validated configuration with defaults applied
     # @raise [ValidationError] if validation fails
-    def self.validate!(config, &block)
-      schema = define(&block)
+    def self.validate!(config, &)
+      schema = define(&)
       schema.validate!(config)
     end
   end

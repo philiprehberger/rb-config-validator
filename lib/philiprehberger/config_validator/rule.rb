@@ -84,7 +84,9 @@ module Philiprehberger
       def validate_allowed(value, errors)
         return unless allowed_values
 
-        errors << "key '#{key}' must be one of #{allowed_values.inspect}, got #{value.inspect}" unless allowed_values.include?(value)
+        return if allowed_values.include?(value)
+
+        errors << "key '#{key}' must be one of #{allowed_values.inspect}, got #{value.inspect}"
       end
     end
   end
