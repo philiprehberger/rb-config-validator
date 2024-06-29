@@ -91,6 +91,27 @@ module Philiprehberger
         @range_validators << { key: key, min: min, max: max }
       end
 
+      # Generate a sample configuration hash from the schema definition
+      #
+      # Uses defaults where available, first allowed value for one_of constraints,
+      # and type-appropriate placeholders for required fields.
+      #
+      # @return [Hash] a sample configuration hash
+      def to_example
+        result = {}
+        @rules.each do |rule|
+          value = if rule.default
+                    rule.default
+                  elsif rule.allowed_values&.any?
+                    rule.allowed_values.first
+                  else
+                    placeholder_for(rule.type)
+                  end
+          result[rule.key] = value
+        end
+        result
+      end
+
       # Validate a configuration hash against all rules
       #
       # @param config [Hash] the configuration to validate
@@ -118,6 +139,17 @@ module Philiprehberger
       end
 
       private
+
+      def placeholder_for(type)
+        case type.to_s
+        when 'String' then 'example'
+        when 'Integer' then 0
+        when 'Float' then 0.0
+        when 'TrueClass', 'FalseClass', 'Boolean' then false
+        when 'Array' then []
+        when 'Hash' then {}
+        end
+      end
 
       def apply_defaults(config)
         rules.each { |rule| rule.apply_default(config) }
