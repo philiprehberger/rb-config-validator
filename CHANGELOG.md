@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-09
+
+### Added
+- `Schema#coerce(config)` for converting string values to expected types (Integer, Float, Boolean)
+- `Schema#to_doc` for generating schema documentation as an array of hashes
+- `Schema#keys` for listing all defined key names
+
 ## [0.3.0] - 2026-04-04
 
 ### Added

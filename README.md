@@ -150,6 +150,43 @@ schema.to_example
 # => { db_url: "example", port: 3000, env: "dev", debug: false }
 ```
 
+### Type Coercion from Strings
+
+Useful when config comes from ENV where all values are strings:
+
+```ruby
+schema = Philiprehberger::ConfigValidator.define do
+  required :port, Integer
+  required :debug, TrueClass
+end
+
+config = { port: '8080', debug: 'true' }
+schema.coerce(config)
+config[:port]   # => 8080 (Integer)
+config[:debug]  # => true (Boolean)
+
+schema.validate(config) # => []
+```
+
+### Schema Documentation
+
+```ruby
+schema = Philiprehberger::ConfigValidator.define do
+  required :db_url, String
+  optional :port, Integer, default: 3000
+  required :env, String, one_of: %w[dev staging prod]
+end
+
+schema.to_doc
+# => [
+#   { key: :db_url, type: "String", required: true, default: nil, constraints: nil },
+#   { key: :port,   type: "Integer", required: false, default: 3000, constraints: nil },
+#   { key: :env,    type: "String", required: true, default: nil, constraints: "one of: [\"dev\", ...]" }
+# ]
+
+schema.keys  # => [:db_url, :port, :env]
+```
+
 ### Inline Validation
 
 ```ruby
@@ -173,6 +210,9 @@ end
 | `Schema#pattern(key, regex, message:)` | Regex pattern validation for string values |
 | `Schema#range(key, min:, max:)` | Numeric range validation |
 | `Schema#to_example` | Generate a sample config hash from the schema definition |
+| `Schema#coerce(config)` | Coerce string values to expected types (Integer, Float, Boolean) |
+| `Schema#to_doc` | Generate documentation array describing each key |
+| `Schema#keys` | Return all defined key names as symbols |
 | `Schema#validate(config)` | Validate a config hash, returns array of error strings |
 | `Schema#validate!(config)` | Validate a config hash, raises ValidationError on failure |
 
