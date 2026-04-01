@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.summary = 'Configuration schema validator with type checking and helpful error messages'
   spec.description = 'Define configuration schemas with required and optional keys, type constraints, ' \
-                       'default values, and allowed value lists. Validates hashes and raises descriptive errors.'
+                     'default values, and allowed value lists. Validates hashes and raises descriptive errors.'
   spec.homepage = 'https://philiprehberger.com/open-source-packages/ruby/philiprehberger-config_validator'
   spec.license = 'MIT'
 
