@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-03
+
+### Added
+- Nested schema validation via `nested` for validating nested hashes
+- Custom predicate validation via `validate_with`
+- Regex pattern validation via `pattern`
+- Numeric range validation via `range`
+
 ## [0.1.5] - 2026-03-31
 
 ### Added

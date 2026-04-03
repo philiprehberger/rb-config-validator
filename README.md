@@ -83,6 +83,59 @@ schema.validate!({ env: 'invalid' })
 # => raises Philiprehberger::ConfigValidator::ValidationError
 ```
 
+### Nested Schemas
+
+```ruby
+schema = Philiprehberger::ConfigValidator.define do
+  nested :database do
+    required :host, String
+    required :port, Integer
+    nested :pool do
+      required :size, Integer
+    end
+  end
+end
+
+errors = schema.validate({ database: { host: 'localhost', port: 5432, pool: { size: 5 } } })
+# => []
+```
+
+### Custom Validators
+
+```ruby
+schema = Philiprehberger::ConfigValidator.define do
+  required :email, String
+  validate_with(:email, message: 'must contain @') { |v| v.include?('@') }
+end
+
+schema.validate({ email: 'invalid' })
+# => ["key 'email' must contain @"]
+```
+
+### Pattern Matching
+
+```ruby
+schema = Philiprehberger::ConfigValidator.define do
+  required :code, String
+  pattern :code, /\A[A-Z]{3}-\d{4}\z/, message: 'must match format XXX-0000'
+end
+
+schema.validate({ code: 'abc' })
+# => ["key 'code' must match format XXX-0000"]
+```
+
+### Range Validation
+
+```ruby
+schema = Philiprehberger::ConfigValidator.define do
+  required :port, Integer
+  range :port, min: 1, max: 65535
+end
+
+schema.validate({ port: 70000 })
+# => ["key 'port' must be <= 65535, got 70000"]
+```
+
 ### Inline Validation
 
 ```ruby
@@ -101,6 +154,10 @@ end
 | `ConfigValidator.validate!(config) { ... }` | Define and validate, raises on errors |
 | `Schema#required(key, type, one_of:)` | Define a required key with type and optional constraint |
 | `Schema#optional(key, type, default:, one_of:)` | Define an optional key with default and constraint |
+| `Schema#nested(key, required:, &block)` | Define a nested schema for a hash key |
+| `Schema#validate_with(key, message:, &block)` | Custom predicate validation |
+| `Schema#pattern(key, regex, message:)` | Regex pattern validation for string values |
+| `Schema#range(key, min:, max:)` | Numeric range validation |
 | `Schema#validate(config)` | Validate a config hash, returns array of error strings |
 | `Schema#validate!(config)` | Validate a config hash, raises ValidationError on failure |
 

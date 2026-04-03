@@ -339,6 +339,276 @@ RSpec.describe Philiprehberger::ConfigValidator do
     end
   end
 
+  describe 'nested schema validation' do
+    it 'validates a valid nested hash' do
+      schema = described_class.define do
+        nested :database do
+          required :host, String
+          required :port, Integer
+        end
+      end
+      config = { database: { host: 'localhost', port: 5432 } }
+      expect(schema.validate(config)).to be_empty
+    end
+
+    it 'reports missing required nested key' do
+      schema = described_class.define do
+        nested :database do
+          required :host, String
+        end
+      end
+      errors = schema.validate({})
+      expect(errors).to include(match(/missing required key 'database'/))
+    end
+
+    it 'reports invalid values inside nested hash' do
+      schema = described_class.define do
+        nested :database do
+          required :port, Integer
+        end
+      end
+      errors = schema.validate({ database: { port: 'abc' } })
+      expect(errors).to include(match(/database\.key 'port' expected Integer/))
+    end
+
+    it 'reports error when nested value is not a Hash' do
+      schema = described_class.define do
+        nested :database do
+          required :host, String
+        end
+      end
+      errors = schema.validate({ database: 'not a hash' })
+      expect(errors).to include(match(/key 'database' expected Hash, got String/))
+    end
+
+    it 'reports error when nested value is nil' do
+      schema = described_class.define do
+        nested :database do
+          required :host, String
+        end
+      end
+      errors = schema.validate({ database: nil })
+      expect(errors).to include(match(/missing required key 'database'/))
+    end
+
+    it 'allows optional nested key to be absent' do
+      schema = described_class.define do
+        nested :cache, required: false do
+          required :ttl, Integer
+        end
+      end
+      expect(schema.validate({})).to be_empty
+    end
+
+    it 'validates deeply nested schemas' do
+      schema = described_class.define do
+        nested :database do
+          required :host, String
+          nested :pool do
+            required :size, Integer
+            nested :timeout do
+              required :connect, Integer
+              required :read, Integer
+            end
+          end
+        end
+      end
+
+      config = {
+        database: {
+          host: 'localhost',
+          pool: {
+            size: 5,
+            timeout: { connect: 5, read: 30 }
+          }
+        }
+      }
+      expect(schema.validate(config)).to be_empty
+    end
+
+    it 'reports errors in deeply nested schemas with path prefix' do
+      schema = described_class.define do
+        nested :database do
+          nested :pool do
+            required :size, Integer
+          end
+        end
+      end
+
+      errors = schema.validate({ database: { pool: { size: 'big' } } })
+      expect(errors).to include(match(/database\.pool\.key 'size' expected Integer/))
+    end
+
+    it 'combines nested with other validators' do
+      schema = described_class.define do
+        required :name, String
+        nested :database do
+          required :host, String
+        end
+        optional :port, Integer, default: 3000
+      end
+
+      config = { name: 'app', database: { host: 'localhost' } }
+      errors = schema.validate(config)
+      expect(errors).to be_empty
+      expect(config[:port]).to eq(3000)
+    end
+  end
+
+  describe 'custom predicate validation (validate_with)' do
+    it 'passes when predicate returns true' do
+      schema = described_class.define do
+        required :email, String
+        validate_with(:email) { |v| v.include?('@') }
+      end
+      expect(schema.validate({ email: 'user@example.com' })).to be_empty
+    end
+
+    it 'reports error when predicate returns false' do
+      schema = described_class.define do
+        required :email, String
+        validate_with(:email) { |v| v.include?('@') }
+      end
+      errors = schema.validate({ email: 'not-an-email' })
+      expect(errors).to include(match(/key 'email' is invalid/))
+    end
+
+    it 'uses custom error message' do
+      schema = described_class.define do
+        required :age, Integer
+        validate_with(:age, message: 'must be positive', &:positive?)
+      end
+      errors = schema.validate({ age: -1 })
+      expect(errors).to include(match(/key 'age' must be positive/))
+    end
+
+    it 'skips validation when key is absent' do
+      schema = described_class.define do
+        optional :score, Integer
+        validate_with(:score) { |v| v > 0 }
+      end
+      expect(schema.validate({})).to be_empty
+    end
+  end
+
+  describe 'pattern validation' do
+    it 'passes when value matches regex' do
+      schema = described_class.define do
+        required :email, String
+        pattern :email, /\A[^@]+@[^@]+\z/
+      end
+      expect(schema.validate({ email: 'user@example.com' })).to be_empty
+    end
+
+    it 'reports error when value does not match regex' do
+      schema = described_class.define do
+        required :email, String
+        pattern :email, /\A[^@]+@[^@]+\z/
+      end
+      errors = schema.validate({ email: 'invalid' })
+      expect(errors).to include(match(/key 'email' does not match expected pattern/))
+    end
+
+    it 'uses custom error message' do
+      schema = described_class.define do
+        required :code, String
+        pattern :code, /\A[A-Z]{3}\z/, message: 'must be 3 uppercase letters'
+      end
+      errors = schema.validate({ code: 'abc' })
+      expect(errors).to include(match(/key 'code' must be 3 uppercase letters/))
+    end
+
+    it 'skips pattern check for non-string values' do
+      schema = described_class.define do
+        required :count, Integer
+        pattern :count, /\d+/
+      end
+      expect(schema.validate({ count: 42 })).to be_empty
+    end
+
+    it 'skips pattern check when key is absent' do
+      schema = described_class.define do
+        optional :tag, String
+        pattern :tag, /\A[a-z]+\z/
+      end
+      expect(schema.validate({})).to be_empty
+    end
+  end
+
+  describe 'range validation' do
+    it 'passes when value is within range (both bounds)' do
+      schema = described_class.define do
+        required :port, Integer
+        range :port, min: 1, max: 65_535
+      end
+      expect(schema.validate({ port: 8080 })).to be_empty
+    end
+
+    it 'reports error when value is below minimum' do
+      schema = described_class.define do
+        required :port, Integer
+        range :port, min: 1, max: 65_535
+      end
+      errors = schema.validate({ port: 0 })
+      expect(errors).to include(match(/key 'port' must be >= 1/))
+    end
+
+    it 'reports error when value is above maximum' do
+      schema = described_class.define do
+        required :port, Integer
+        range :port, min: 1, max: 65_535
+      end
+      errors = schema.validate({ port: 70_000 })
+      expect(errors).to include(match(/key 'port' must be <= 65535/))
+    end
+
+    it 'validates with min only' do
+      schema = described_class.define do
+        required :count, Integer
+        range :count, min: 0
+      end
+      expect(schema.validate({ count: 0 })).to be_empty
+      errors = schema.validate({ count: -1 })
+      expect(errors).to include(match(/must be >= 0/))
+    end
+
+    it 'validates with max only' do
+      schema = described_class.define do
+        required :score, Integer
+        range :score, max: 100
+      end
+      expect(schema.validate({ score: 100 })).to be_empty
+      errors = schema.validate({ score: 101 })
+      expect(errors).to include(match(/must be <= 100/))
+    end
+
+    it 'skips range check for non-numeric values' do
+      schema = described_class.define do
+        required :name, String
+        range :name, min: 1, max: 10
+      end
+      expect(schema.validate({ name: 'hello' })).to be_empty
+    end
+
+    it 'skips range check when key is absent' do
+      schema = described_class.define do
+        optional :priority, Integer
+        range :priority, min: 1, max: 5
+      end
+      expect(schema.validate({})).to be_empty
+    end
+
+    it 'works with float values' do
+      schema = described_class.define do
+        required :rate, Float
+        range :rate, min: 0.0, max: 1.0
+      end
+      expect(schema.validate({ rate: 0.5 })).to be_empty
+      errors = schema.validate({ rate: 1.5 })
+      expect(errors).to include(match(/must be <= 1.0/))
+    end
+  end
+
   describe Philiprehberger::ConfigValidator::Rule do
     describe '#key' do
       it 'returns the configured key name' do
