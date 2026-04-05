@@ -136,6 +136,20 @@ schema.validate({ port: 70000 })
 # => ["key 'port' must be <= 65535, got 70000"]
 ```
 
+### Example Generation
+
+```ruby
+schema = Philiprehberger::ConfigValidator.define do
+  required :db_url, String
+  optional :port, Integer, default: 3000
+  required :env, String, one_of: %w[dev staging prod]
+  optional :debug, TrueClass
+end
+
+schema.to_example
+# => { db_url: "example", port: 3000, env: "dev", debug: false }
+```
+
 ### Inline Validation
 
 ```ruby
@@ -158,6 +172,7 @@ end
 | `Schema#validate_with(key, message:, &block)` | Custom predicate validation |
 | `Schema#pattern(key, regex, message:)` | Regex pattern validation for string values |
 | `Schema#range(key, min:, max:)` | Numeric range validation |
+| `Schema#to_example` | Generate a sample config hash from the schema definition |
 | `Schema#validate(config)` | Validate a config hash, returns array of error strings |
 | `Schema#validate!(config)` | Validate a config hash, raises ValidationError on failure |
 

@@ -535,6 +535,98 @@ RSpec.describe Philiprehberger::ConfigValidator do
     end
   end
 
+  describe 'Schema#to_example' do
+    it 'uses default values when available' do
+      schema = described_class.define do
+        optional :port, Integer, default: 3000
+        optional :host, String, default: 'localhost'
+      end
+      example = schema.to_example
+      expect(example[:port]).to eq(3000)
+      expect(example[:host]).to eq('localhost')
+    end
+
+    it 'uses first allowed value when one_of is set and no default' do
+      schema = described_class.define do
+        required :env, String, one_of: %w[dev staging prod]
+      end
+      example = schema.to_example
+      expect(example[:env]).to eq('dev')
+    end
+
+    it 'uses placeholder for String type' do
+      schema = described_class.define do
+        required :name, String
+      end
+      expect(schema.to_example[:name]).to eq('example')
+    end
+
+    it 'uses placeholder for Integer type' do
+      schema = described_class.define do
+        required :count, Integer
+      end
+      expect(schema.to_example[:count]).to eq(0)
+    end
+
+    it 'uses placeholder for Float type' do
+      schema = described_class.define do
+        required :rate, Float
+      end
+      expect(schema.to_example[:rate]).to eq(0.0)
+    end
+
+    it 'uses placeholder for TrueClass type' do
+      schema = described_class.define do
+        required :flag, TrueClass
+      end
+      expect(schema.to_example[:flag]).to eq(false)
+    end
+
+    it 'uses placeholder for Array type' do
+      schema = described_class.define do
+        required :items, Array
+      end
+      expect(schema.to_example[:items]).to eq([])
+    end
+
+    it 'uses placeholder for Hash type' do
+      schema = described_class.define do
+        required :meta, Hash
+      end
+      expect(schema.to_example[:meta]).to eq({})
+    end
+
+    it 'returns nil for unknown types' do
+      schema = described_class.define do
+        required :custom, Regexp
+      end
+      expect(schema.to_example[:custom]).to be_nil
+    end
+
+    it 'prefers default over allowed_values' do
+      schema = described_class.define do
+        optional :env, String, default: 'staging', one_of: %w[dev staging prod]
+      end
+      expect(schema.to_example[:env]).to eq('staging')
+    end
+
+    it 'generates a complete example from a mixed schema' do
+      schema = described_class.define do
+        required :db_url, String
+        optional :port, Integer, default: 3000
+        required :env, String, one_of: %w[dev staging prod]
+        optional :debug, TrueClass
+      end
+      example = schema.to_example
+      expect(example).to eq({
+                              db_url: 'example',
+                              port: 3000,
+                              env: 'dev',
+                              debug: false
+                            })
+    end
+  end
+
   describe 'range validation' do
     it 'passes when value is within range (both bounds)' do
       schema = described_class.define do
