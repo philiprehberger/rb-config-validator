@@ -701,6 +701,138 @@ RSpec.describe Philiprehberger::ConfigValidator do
     end
   end
 
+  describe 'Schema#keys' do
+    it 'returns all defined key names' do
+      schema = described_class.define do
+        required :host, String
+        optional :port, Integer, default: 3000
+        required :env, String
+      end
+      expect(schema.keys).to eq(%i[host port env])
+    end
+
+    it 'returns empty array for empty schema' do
+      schema = described_class.define {}
+      expect(schema.keys).to be_empty
+    end
+  end
+
+  describe 'Schema#coerce' do
+    it 'coerces string to Integer' do
+      schema = described_class.define do
+        required :port, Integer
+      end
+      config = { port: '8080' }
+      schema.coerce(config)
+      expect(config[:port]).to eq(8080)
+    end
+
+    it 'coerces string to Float' do
+      schema = described_class.define do
+        required :rate, Float
+      end
+      config = { rate: '3.14' }
+      schema.coerce(config)
+      expect(config[:rate]).to eq(3.14)
+    end
+
+    it 'coerces "true" to boolean true' do
+      schema = described_class.define do
+        required :debug, TrueClass
+      end
+      config = { debug: 'true' }
+      schema.coerce(config)
+      expect(config[:debug]).to be true
+    end
+
+    it 'coerces "false" to boolean false' do
+      schema = described_class.define do
+        required :debug, TrueClass
+      end
+      config = { debug: 'false' }
+      schema.coerce(config)
+      expect(config[:debug]).to be false
+    end
+
+    it 'leaves non-string values unchanged' do
+      schema = described_class.define do
+        required :port, Integer
+      end
+      config = { port: 8080 }
+      schema.coerce(config)
+      expect(config[:port]).to eq(8080)
+    end
+
+    it 'leaves strings that cannot be coerced unchanged' do
+      schema = described_class.define do
+        required :port, Integer
+      end
+      config = { port: 'not_a_number' }
+      schema.coerce(config)
+      expect(config[:port]).to eq('not_a_number')
+    end
+
+    it 'does not coerce String type' do
+      schema = described_class.define do
+        required :name, String
+      end
+      config = { name: 'hello' }
+      schema.coerce(config)
+      expect(config[:name]).to eq('hello')
+    end
+
+    it 'works with string keys' do
+      schema = described_class.define do
+        required :port, Integer
+      end
+      config = { 'port' => '3000' }
+      schema.coerce(config)
+      expect(config['port']).to eq(3000)
+    end
+
+    it 'coerce then validate passes for ENV-style config' do
+      schema = described_class.define do
+        required :port, Integer
+        required :debug, TrueClass
+      end
+      config = { port: '8080', debug: 'true' }
+      schema.coerce(config)
+      expect(schema.validate(config)).to be_empty
+    end
+  end
+
+  describe 'Schema#to_doc' do
+    it 'documents required keys' do
+      schema = described_class.define do
+        required :host, String
+      end
+      docs = schema.to_doc
+      expect(docs.first).to eq(key: :host, type: 'String', required: true, default: nil, constraints: nil)
+    end
+
+    it 'documents optional keys with defaults' do
+      schema = described_class.define do
+        optional :port, Integer, default: 3000
+      end
+      docs = schema.to_doc
+      expect(docs.first[:required]).to be false
+      expect(docs.first[:default]).to eq(3000)
+    end
+
+    it 'documents one_of constraints' do
+      schema = described_class.define do
+        required :env, String, one_of: %w[dev staging prod]
+      end
+      docs = schema.to_doc
+      expect(docs.first[:constraints]).to include('one of')
+    end
+
+    it 'returns empty array for empty schema' do
+      schema = described_class.define {}
+      expect(schema.to_doc).to be_empty
+    end
+  end
+
   describe Philiprehberger::ConfigValidator::Rule do
     describe '#key' do
       it 'returns the configured key name' do

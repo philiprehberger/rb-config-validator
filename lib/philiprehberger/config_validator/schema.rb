@@ -112,6 +112,55 @@ module Philiprehberger
         result
       end
 
+      # Return all defined key names
+      #
+      # @return [Array<Symbol>] the key names
+      def keys
+        @rules.map(&:key)
+      end
+
+      # Coerce string values in a config hash to their expected types.
+      #
+      # Useful when config comes from ENV where all values are strings.
+      # Modifies the hash in place and returns it.
+      #
+      # @param config [Hash] the configuration to coerce
+      # @return [Hash] the coerced configuration
+      def coerce(config)
+        @rules.each do |rule|
+          value = config.key?(rule.key) ? config[rule.key] : config[rule.key.to_s]
+          next unless value.is_a?(String)
+
+          coerced = coerce_value(value, rule.type)
+          next if coerced.nil?
+
+          if config.key?(rule.key)
+            config[rule.key] = coerced
+          elsif config.key?(rule.key.to_s)
+            config[rule.key.to_s] = coerced
+          end
+        end
+        config
+      end
+
+      # Generate documentation for the schema.
+      #
+      # @return [Array<Hash>] one hash per key with :key, :type, :required, :default, :constraints
+      def to_doc
+        @rules.map do |rule|
+          constraints = []
+          constraints << "one of: #{rule.allowed_values.inspect}" if rule.allowed_values&.any?
+
+          {
+            key: rule.key,
+            type: rule.type.name,
+            required: rule.required,
+            default: rule.default,
+            constraints: constraints.empty? ? nil : constraints.join(', ')
+          }
+        end
+      end
+
       # Validate a configuration hash against all rules
       #
       # @param config [Hash] the configuration to validate
@@ -139,6 +188,20 @@ module Philiprehberger
       end
 
       private
+
+      def coerce_value(value, type)
+        case type.to_s
+        when 'Integer'
+          Integer(value, exception: false)
+        when 'Float'
+          Float(value, exception: false)
+        when 'TrueClass', 'FalseClass'
+          case value.downcase
+          when 'true' then true
+          when 'false' then false
+          end
+        end
+      end
 
       def placeholder_for(type)
         case type.to_s
