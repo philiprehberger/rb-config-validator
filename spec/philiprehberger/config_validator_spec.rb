@@ -717,6 +717,92 @@ RSpec.describe Philiprehberger::ConfigValidator do
     end
   end
 
+  describe '#required_keys' do
+    it 'returns keys declared with required' do
+      schema = described_class.define do
+        required :host, String
+        required :port, Integer
+      end
+      expect(schema.required_keys).to eq(%i[host port])
+    end
+
+    it 'excludes optional keys' do
+      schema = described_class.define do
+        required :host, String
+        optional :port, Integer, default: 3000
+      end
+      expect(schema.required_keys).to eq(%i[host])
+    end
+
+    it 'includes nested schemas declared as required' do
+      schema = described_class.define do
+        required :host, String
+        nested :database do
+          required :url, String
+        end
+      end
+      expect(schema.required_keys).to include(:host, :database)
+    end
+
+    it 'excludes nested schemas declared with required: false' do
+      schema = described_class.define do
+        required :host, String
+        nested :cache, required: false do
+          required :ttl, Integer
+        end
+      end
+      expect(schema.required_keys).to eq(%i[host])
+    end
+
+    it 'returns empty array for empty schema' do
+      schema = described_class.define {}
+      expect(schema.required_keys).to be_empty
+    end
+  end
+
+  describe '#optional_keys' do
+    it 'returns keys declared with optional' do
+      schema = described_class.define do
+        optional :port, Integer, default: 3000
+        optional :debug, TrueClass
+      end
+      expect(schema.optional_keys).to eq(%i[port debug])
+    end
+
+    it 'excludes required keys' do
+      schema = described_class.define do
+        required :host, String
+        optional :port, Integer, default: 3000
+      end
+      expect(schema.optional_keys).to eq(%i[port])
+    end
+
+    it 'includes nested schemas declared with required: false' do
+      schema = described_class.define do
+        optional :port, Integer, default: 3000
+        nested :cache, required: false do
+          required :ttl, Integer
+        end
+      end
+      expect(schema.optional_keys).to include(:port, :cache)
+    end
+
+    it 'excludes nested schemas declared as required' do
+      schema = described_class.define do
+        optional :port, Integer, default: 3000
+        nested :database do
+          required :url, String
+        end
+      end
+      expect(schema.optional_keys).to eq(%i[port])
+    end
+
+    it 'returns empty array for empty schema' do
+      schema = described_class.define {}
+      expect(schema.optional_keys).to be_empty
+    end
+  end
+
   describe 'Schema#coerce' do
     it 'coerces string to Integer' do
       schema = described_class.define do
