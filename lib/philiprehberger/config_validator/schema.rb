@@ -119,6 +119,30 @@ module Philiprehberger
         @rules.map(&:key)
       end
 
+      # Return the array of keys declared as required.
+      #
+      # Includes keys defined via {#required} as well as nested schema keys declared
+      # with +required: true+ (the default for {#nested}).
+      #
+      # @return [Array<Symbol>] the required key names
+      def required_keys
+        rule_keys = @rules.select(&:required).map(&:key)
+        nested_keys = @nested_schemas.select { |entry| entry[:required] }.map { |entry| entry[:key] }
+        rule_keys + nested_keys
+      end
+
+      # Return the array of keys declared as optional.
+      #
+      # Includes keys defined via {#optional} as well as nested schema keys declared
+      # with +required: false+.
+      #
+      # @return [Array<Symbol>] the optional key names
+      def optional_keys
+        rule_keys = @rules.reject(&:required).map(&:key)
+        nested_keys = @nested_schemas.reject { |entry| entry[:required] }.map { |entry| entry[:key] }
+        rule_keys + nested_keys
+      end
+
       # Coerce string values in a config hash to their expected types.
       #
       # Useful when config comes from ENV where all values are strings.

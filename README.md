@@ -213,6 +213,8 @@ end
 | `Schema#coerce(config)` | Coerce string values to expected types (Integer, Float, Boolean) |
 | `Schema#to_doc` | Generate documentation array describing each key |
 | `Schema#keys` | Return all defined key names as symbols |
+| `Schema#required_keys` | Return array of required key names |
+| `Schema#optional_keys` | Return array of optional key names |
 | `Schema#validate(config)` | Validate a config hash, returns array of error strings |
 | `Schema#validate!(config)` | Validate a config hash, raises ValidationError on failure |
 
